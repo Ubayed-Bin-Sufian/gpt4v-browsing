@@ -50,10 +50,12 @@ async function input( text ) {
     return the_prompt;  // After the promise is resolved, the function returns the the_prompt variable, which contains the user's input.
 }
 
+// introduces a delay (or sleep) in the execution of the code for a given number of milliseconds
 async function sleep( milliseconds ) {
+    // new Promise() constructor takes a function with two arguments: r (short for resolve) and _ (which could be used as reject, but it is unused here). The promise will be resolved after the specified delay.
     return await new Promise((r, _) => {
         setTimeout( () => {
-            r();
+            r();  // As soon as r() is called, the promise is resolved, and the sleep function completes.
         }, milliseconds );
     });
 }
