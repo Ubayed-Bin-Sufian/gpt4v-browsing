@@ -1,5 +1,5 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteer from 'puppeteer-extra';  //  used for browser automation
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';  // to make the automation less detectable by websites
 import OpenAI from 'openai';
 import readline from 'readline';
 import fs from 'fs';
@@ -9,17 +9,19 @@ puppeteer.use(StealthPlugin());
 const openai = new OpenAI();
 const timeout = 8000;
 
+// reads an image file and converts it to a Base64-encoded string.
 async function image_to_base64(image_file) {
     return await new Promise((resolve, reject) => {
-        fs.readFile(image_file, (err, data) => {
+        fs.readFile(image_file, (err, data) => {  //fs.readFile method is used to read the image file from the file system.
             if (err) {
                 console.error('Error reading the file:', err);
                 reject();
                 return;
             }
 
-            const base64Data = data.toString('base64');
-            const dataURI = `data:image/jpeg;base64,${base64Data}`;
+            const base64Data = data.toString('base64');  // it converts the binary data to a Base64 string
+            // data URI: a string format that embeds image data directly within HTML or other contexts. This is useful when you need to include an image directly in a web page or an API without using an external image file.
+            const dataURI = `data:image/jpeg;base64, ${base64Data}`;  // The Base64 string is then formatted as a data URI for an image with the JPEG format
             resolve(dataURI);
         });
     });
