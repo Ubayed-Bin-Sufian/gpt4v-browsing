@@ -25,9 +25,11 @@ async function image_to_base64(image_file) {
     });
 }
 
+// prompts the user for input via the command line and returns the input value as a string
 async function input( text ) {
     let the_prompt;
 
+    // rl is the readline interface, which allows you to prompt the user for input and capture their response.
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
@@ -35,15 +37,15 @@ async function input( text ) {
 
     await (async () => {
         return new Promise( resolve => {
-            rl.question( text, (prompt) => {
+            rl.question( text, (prompt) => {  // prompts the user with the provided text message and waits for their input. The user's input is captured in the prompt variable.
                 the_prompt = prompt;
-                rl.close();
+                rl.close();  // closes the readline interface, indicating that no more input will be accepted.
                 resolve();
             } );
         } );
     })();
 
-    return the_prompt;
+    return the_prompt;  // After the promise is resolved, the function returns the the_prompt variable, which contains the user's input.
 }
 
 async function sleep( milliseconds ) {
