@@ -193,7 +193,7 @@ In the beginning, go to a direct URL that you think might contain the answer to 
 
             await page.screenshot( {
                 path: "screenshot.jpg",
-                quality: 100,
+                quality: 10,
             } );
 
             screenshot_taken = true;
@@ -207,13 +207,16 @@ In the beginning, go to a direct URL that you think might contain the answer to 
                 "role": "user",
                 "content": [
                     {
-                        "type": "image_url",
-                        "image_url": base64_image,
-                    },
-                    {
                         "type": "text",
                         "text": "Here's the screenshot of the website you are on right now. You can click on links with {\"click\": \"Link text\"} or you can crawl to another URL if this one is incorrect. If you find the answer to the user's question, you can respond normally.",
-                    }
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": base64_image,
+                            "detail": "low"
+                        },
+                    }                    
                 ]
             });
 
@@ -221,7 +224,7 @@ In the beginning, go to a direct URL that you think might contain the answer to 
         }
 
         const response = await openai.chat.completions.create({
-            model: "gpt-4-vision-preview",
+            model: "gpt-4o-mini",
             max_tokens: 1024,
             //seed: 665234,
             messages: messages,
