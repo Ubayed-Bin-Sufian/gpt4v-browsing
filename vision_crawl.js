@@ -138,14 +138,19 @@ async function highlight_links( page ) {
     } );
 }
 
+// Asynchronous function that waits for a specified event to occur on the page
 async function waitForEvent(page, event) {
+    // Evaluate function inside the browser context to listen for the event
     return page.evaluate(event => {
+        // Return a new Promise that resolves when the specified event occurs
         return new Promise((r, _) => {
+            // Add an event listener for the specified event
             document.addEventListener(event, function(e) {
+                // Resolve the promise when the event is triggered
                 r();
             });
         });
-    }, event)
+    }, event)  // Pass the event type (e.g., 'click', 'keydown') to the evaluate function
 }
 
 (async () => {
