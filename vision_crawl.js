@@ -61,21 +61,28 @@ async function sleep( milliseconds ) {
 }
 
 async function highlight_links( page ) {
+    // Remove existing 'gpt-link-text' attributes from all elements
     await page.evaluate(() => {
         document.querySelectorAll('[gpt-link-text]').forEach(e => {
             e.removeAttribute("gpt-link-text");
         });
     });
 
+    // Select all interactable elements (links, buttons, inputs, etc.)
     const elements = await page.$$(
         "a, button, input, textarea, [role=button], [role=treeitem]"
     );
 
+    // Loop through each element
     elements.forEach( async e => {
+        // Evaluate the following function in the browser context
         await page.evaluate(e => {
-            function isElementVisible(el) {
-                if (!el) return false; // Element does not exist
 
+            // Function to check if an element is visible
+            function isElementVisible(el) {
+                if (!el) return false;  // If the element does not exist, return false
+                
+                // Check if the element's style properties indicate it is visible
                 function isStyleVisible(el) {
                     const style = window.getComputedStyle(el);
                     return style.width !== '0' &&
@@ -85,6 +92,7 @@ async function highlight_links( page ) {
                            style.visibility !== 'hidden';
                 }
 
+                // Check if the element is within the visible area of the viewport
                 function isElementInViewport(el) {
                     const rect = el.getBoundingClientRect();
                     return (
@@ -101,6 +109,7 @@ async function highlight_links( page ) {
                 }
 
                 // Traverse up the DOM and check if any ancestor element is hidden
+                // Check all parent elements to ensure none are hidden
                 let parent = el;
                 while (parent) {
                     if (!isStyleVisible(parent)) {
@@ -112,16 +121,20 @@ async function highlight_links( page ) {
                 // Finally, check if the element is within the viewport
                 return isElementInViewport(el);
             }
-
+            
+            // If the element passes the visibility checks, it is highlighted by adding a red border around it
             e.style.border = "1px solid red";
 
+            // Get the position and dimensions of the element
             const position = e.getBoundingClientRect();
 
+            // If the element is visible, has a size, and passes visibility checks
             if( position.width > 5 && position.height > 5 && isElementVisible(e) ) {
+                // Sanitize the text content and store it in the 'gpt-link-text' attribute
                 const link_text = e.textContent.replace(/[^a-zA-Z0-9 ]/g, '');
                 e.setAttribute( "gpt-link-text", link_text );
             }
-        }, e);
+        }, e);  // Pass each element to the evaluate function
     } );
 }
 
