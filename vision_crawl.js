@@ -153,75 +153,89 @@ async function waitForEvent(page, event) {
     }, event)  // Pass the event type (e.g., 'click', 'keydown') to the evaluate function
 }
 
+// automates a browser, takes screenshots, and communicates with the GPT-4 API to assist with navigating websites and answering questions based on the current page.
 (async () => {
+    // Display a banner with program name in the console
     console.log( "###########################################" );
     console.log( "# GPT4V-Browsing by Unconventional Coding #" );
     console.log( "###########################################\n" );
 
+    // Launch a Puppeteer browser instance in headless mode, meaning it runs in the background without opening a visible browser window.
     const browser = await puppeteer.launch( {
-        headless: "new",
+        headless: "new",  // 'new' option for modern headless mode
     } );
 
+    // Open a new page in the browser
     const page = await browser.newPage();
 
+    // Set the viewport to specific dimensions and scale factor
     await page.setViewport( {
         width: 1200,
         height: 1200,
-        deviceScaleFactor: 1.75,
+        deviceScaleFactor: 1.75,  // Higher scale factor for higher resolution display
     } );
 
+    // Initial system message to set GPT-4's role as a website crawler
     const messages = [
         {
             "role": "system",
             "content": `You are a website crawler. You will be given instructions on what to do by browsing. You are connected to a web browser and you will be given the screenshot of the website you are on. The links on the website will be highlighted in red in the screenshot. Always read what is in the screenshot. Don't guess link names.
 
-You can go to a specific URL by answering with the following JSON format:
-{"url": "url goes here"}
+                You can go to a specific URL by answering with the following JSON format:
+                {"url": "url goes here"}
 
-You can click links on the website by referencing the text inside of the link/button, by answering in the following JSON format:
-{"click": "Text in link"}
+                You can click links on the website by referencing the text inside of the link/button, by answering in the following JSON format:
+                {"click": "Text in link"}
 
-Once you are on a URL and you have found the answer to the user's question, you can answer with a regular message.
+                Once you are on a URL and you have found the answer to the user's question, you can answer with a regular message.
 
-In the beginning, go to a direct URL that you think might contain the answer to the user's question. Prefer to go directly to sub-urls like 'https://google.com/search?q=search' if applicable. Prefer to use Google for simple queries. If the user provides a direct URL, go to that one.`,
+                In the beginning, go to a direct URL that you think might contain the answer to the user's question. Prefer to go directly to sub-urls like 'https://google.com/search?q=search' if applicable. Prefer to use Google for simple queries. If the user provides a direct URL, go to that one.`,
         }
     ];
 
+    // Prompt the user for their question or instruction
     console.log("GPT: How can I assist you today?")
     const prompt = await input("You: ");
     console.log();
 
+    // Add the user's prompt to the messages array for GPT-4 to process
     messages.push({
         "role": "user",
         "content": prompt,
     });
 
-    let url;
-    let screenshot_taken = false;
+    let url; // Variable to hold URL for navigation
+    let screenshot_taken = false; // Track whether a screenshot has been taken
 
+    // Main loop to process website interactions and GPT-4 responses
     while( true ) {
+        // If a URL is set, navigate to it
         if( url ) {
             console.log("Crawling " + url);
             await page.goto( url, {
-                waitUntil: "domcontentloaded",
+                waitUntil: "domcontentloaded",  // Wait until the DOM is fully loaded
             } );
 
+            // Highlight all clickable elements on the page
             await highlight_links( page );
 
-            await Promise.race( [
-                waitForEvent(page, 'load'),
-                sleep(timeout)
-            ] );
+            // Wait for the page to load or timeout after a certain period
+            await Promise.race([
+                waitForEvent(page, 'load'),  // Wait for load event
+                sleep(timeout)  // Timeout to avoid getting stuck
+            ]);
 
+            // Take another screenshot after page loads and highlight elements
             await highlight_links( page );
 
+            // Save the screenshot to a file
             await page.screenshot( {
                 path: "screenshot.jpg",
-                quality: 100,
+                quality: 100,  // High-quality screenshot
             } );
 
-            screenshot_taken = true;
-            url = null;
+            screenshot_taken = true;  // Set flag indicating a screenshot was taken
+            url = null;  // Reset the URL variable
         }
 
         if( screenshot_taken ) {
