@@ -238,15 +238,18 @@ async function waitForEvent(page, event) {
             url = null;  // Reset the URL variable
         }
 
+        // If a screenshot was taken, process and send it to GPT-4
         if( screenshot_taken ) {
+            // Convert screenshot to a base64 string for embedding in the response
             const base64_image = await image_to_base64("screenshot.jpg");
 
+            // Send the screenshot and additional info to GPT-4 as a user message
             messages.push({
                 "role": "user",
                 "content": [
                     {
                         "type": "image_url",
-                        "image_url": base64_image,
+                        "image_url": base64_image,  // Embedded screenshot
                     },
                     {
                         "type": "text",
@@ -255,19 +258,22 @@ async function waitForEvent(page, event) {
                 ]
             });
 
-            screenshot_taken = false;
+            screenshot_taken = false;  // Reset the screenshot flag
         }
 
+        // Send the current conversation (messages) to GPT-4 for a response
         const response = await openai.chat.completions.create({
-            model: "gpt-4-vision-preview",
-            max_tokens: 1024,
+            model: "gpt-4-vision-preview",  // Use GPT-4 vision model
+            max_tokens: 1024,  // Set max tokens for response length
             //seed: 665234,
-            messages: messages,
+            messages: messages,  // Send full conversation history
         });
 
+        // Extract GPT-4's response message
         const message = response.choices[0].message;
         const message_text = message.content;
 
+        // Add GPT-4's response to the messages array
         messages.push({
             "role": "assistant",
             "content": message_text,
@@ -275,22 +281,28 @@ async function waitForEvent(page, event) {
 
         console.log( "GPT: " + message_text );
 
+        // If GPT-4 suggests clicking a link
         if( message_text.indexOf('{"click": "') !== -1 ) {
+            // Extract the link text from GPT-4's response
             let parts = message_text.split('{"click": "');
             parts = parts[1].split('"}');
-            const link_text = parts[0].replace(/[^a-zA-Z0-9 ]/g, '');
+            const link_text = parts[0].replace(/[^a-zA-Z0-9 ]/g, '');  // Clean the link text
 
             console.log("Clicking on " + link_text)
 
             try {
+                // Find all elements on the page that have been highlighted
                 const elements = await page.$$('[gpt-link-text]');
 
-                let partial;
-                let exact;
+                let partial;  // Variable to store partial matches
+                let exact;  // Variable to store exact matches
 
+                // Loop through the highlighted elements
                 for( const element of elements ) {
+                    // Get the value of the 'gpt-link-text' attribute
                     const attributeValue = await element.getAttribute('gpt-link-text');
 
+                    // Check for partial or exact matches with the link text
                     if( attributeValue.includes( link_text ) ) {
                         partial = element;
                     }
@@ -300,6 +312,7 @@ async function waitForEvent(page, event) {
                     }
                 }
 
+                // If an exact match is found, click it; otherwise, click the partial match
                 if( exact ) {
                     await exact.click();
                 } else if( partial ) {
@@ -308,11 +321,13 @@ async function waitForEvent(page, event) {
                     throw new Error( "Can't find link" );
                 }
 
+                // Wait for the new page to load or timeout
                 await Promise.race( [
                     waitForEvent(page, 'load'),
                     sleep(timeout)
                 ] );
 
+                // Highlight the new page's links and take a screenshot
                 await highlight_links( page );
 
                 await page.screenshot( {
@@ -324,24 +339,28 @@ async function waitForEvent(page, event) {
             } catch( error ) {
                 console.log( "ERROR: Clicking failed" );
 
+                // If an error occurs, send an error message to GPT-4
                 messages.push({
                     "role": "user",
                     "content": "ERROR: I was unable to click that element",
                 });
             }
 
-            continue;
+            continue;  // Restart the loop
         } else if( message_text.indexOf('{"url": "') !== -1 ) {
+            // If GPT-4 suggests navigating to a new URL
             let parts = message_text.split('{"url": "');
             parts = parts[1].split('"}');
-            url = parts[0];
+            url = parts[0];  // Extract the URL to navigate to
 
-            continue;
+            continue;  // Restart the loop to navigate to the new URL
         }
 
+        // Prompt the user for the next input and continue the conversation
         const prompt = await input("You: ");
         console.log();
 
+        // Add the user's new prompt to the messages array
         messages.push({
             "role": "user",
             "content": prompt,
