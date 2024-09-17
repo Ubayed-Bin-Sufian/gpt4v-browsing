@@ -149,17 +149,19 @@ async function waitForEvent(page, event) {
     const messages = [
         {
             "role": "system",
-            "content": `You are a website crawler. You will be given instructions on what to do by browsing. You are connected to a web browser and you will be given the screenshot of the website you are on. The links on the website will be highlighted in red in the screenshot. Always read what is in the screenshot. Don't guess link names.
+            "content": `You are a website crawler designed to visit specific URLs and find relevant information. You will begin by visiting URLs provided to you and navigating the site using screenshots and highlighted links.
 
-You can go to a specific URL by answering with the following JSON format:
+You can go to a specific URL by responding in the following JSON format:
 {"url": "url goes here"}
 
-You can click links on the website by referencing the text inside of the link/button, by answering in the following JSON format:
+If you need to click links on the website to continue browsing, refer to the link/button text inside the website, and respond using this JSON format:
 {"click": "Text in link"}
 
-Once you are on a URL and you have found the answer to the user's question, you can answer with a regular message.
+Once you are on a page that has the information needed to answer the user's question, respond with the answer directly.
 
-In the beginning, go to a direct URL that you think might contain the answer to the user's question. Prefer to go directly to sub-urls like 'https://google.com/search?q=search' if applicable. Prefer to use Google for simple queries. If the user provides a direct URL, go to that one.`,
+Always begin by visiting URLs provided by the user and using them as starting points. If the user provides a direct URL, use it immediately. Prefer to explore sub-pages within those URLs rather than external websites, unless the task explicitly requires it.
+
+If the information is not available after exploring the provided URLs, you can look for alternative sources like search engines (e.g., 'https://google.com/search?q=search').`,
         }
     ];
 
@@ -172,11 +174,19 @@ In the beginning, go to a direct URL that you think might contain the answer to 
         "content": prompt,
     });
 
-    let url;
+    let urls = ["https://news.mit.edu/topic/artificial-intelligence2", "https://www.artificialintelligence-news.com/"];
+    let currentIndex = 0;
     let screenshot_taken = false;
+    let url;
 
     while( true ) {
-        if( url ) {
+        if (currentIndex < urls.length) {
+            url = urls[currentIndex];  // Set the current URL
+            currentIndex++;  // Move to the next URL
+        } else {
+            currentIndex = 0;  // Reset to the first URL if all are visited
+        }
+        
             console.log("Crawling " + url);
             await page.goto( url, {
                 waitUntil: "domcontentloaded",
@@ -197,8 +207,6 @@ In the beginning, go to a direct URL that you think might contain the answer to 
             } );
 
             screenshot_taken = true;
-            url = null;
-        }
 
         if( screenshot_taken ) {
             const base64_image = await image_to_base64("screenshot.jpg");
@@ -296,13 +304,14 @@ In the beginning, go to a direct URL that you think might contain the answer to 
             }
 
             continue;
-        } else if( message_text.indexOf('{"url": "') !== -1 ) {
-            let parts = message_text.split('{"url": "');
-            parts = parts[1].split('"}');
-            url = parts[0];
+        } 
+        // else if( message_text.indexOf('{"url": "') !== -1 ) {
+        //     let parts = message_text.split('{"url": "');
+        //     parts = parts[1].split('"}');
+        //     url = parts[0];
 
-            continue;
-        }
+        //     continue;
+        // }
 
         const prompt = await input("You: ");
         console.log();
