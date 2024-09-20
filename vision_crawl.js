@@ -9,6 +9,9 @@ puppeteer.use(StealthPlugin());
 const openai = new OpenAI();
 const timeout = 8000;
 
+// Variable to store the initial URL
+const starting_url = "https://example.com";  // Replace this with your desired URL
+
 async function image_to_base64(image_file) {
     return await new Promise((resolve, reject) => {
         fs.readFile(image_file, (err, data) => {
@@ -25,36 +28,36 @@ async function image_to_base64(image_file) {
     });
 }
 
-async function input( text ) {
+async function input(text) {
     let the_prompt;
 
     const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
+        input: process.stdin,
+        output: process.stdout
     });
 
     await (async () => {
-        return new Promise( resolve => {
-            rl.question( text, (prompt) => {
+        return new Promise(resolve => {
+            rl.question(text, (prompt) => {
                 the_prompt = prompt;
                 rl.close();
                 resolve();
-            } );
-        } );
+            });
+        })();
     })();
 
     return the_prompt;
 }
 
-async function sleep( milliseconds ) {
+async function sleep(milliseconds) {
     return await new Promise((r, _) => {
-        setTimeout( () => {
+        setTimeout(() => {
             r();
-        }, milliseconds );
+        }, milliseconds);
     });
 }
 
-async function highlight_links( page ) {
+async function highlight_links(page) {
     await page.evaluate(() => {
         document.querySelectorAll('[gpt-link-text]').forEach(e => {
             e.removeAttribute("gpt-link-text");
@@ -65,45 +68,42 @@ async function highlight_links( page ) {
         "a, button, input, textarea, [role=button], [role=treeitem]"
     );
 
-    elements.forEach( async e => {
+    elements.forEach(async e => {
         await page.evaluate(e => {
             function isElementVisible(el) {
-                if (!el) return false; // Element does not exist
+                if (!el) return false;
 
                 function isStyleVisible(el) {
                     const style = window.getComputedStyle(el);
                     return style.width !== '0' &&
-                           style.height !== '0' &&
-                           style.opacity !== '0' &&
-                           style.display !== 'none' &&
-                           style.visibility !== 'hidden';
+                        style.height !== '0' &&
+                        style.opacity !== '0' &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden';
                 }
 
                 function isElementInViewport(el) {
                     const rect = el.getBoundingClientRect();
                     return (
-                    rect.top >= 0 &&
-                    rect.left >= 0 &&
-                    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-                    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                        rect.top >= 0 &&
+                        rect.left >= 0 &&
+                        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
                     );
                 }
 
-                // Check if the element is visible style-wise
                 if (!isStyleVisible(el)) {
                     return false;
                 }
 
-                // Traverse up the DOM and check if any ancestor element is hidden
                 let parent = el;
                 while (parent) {
                     if (!isStyleVisible(parent)) {
-                    return false;
+                        return false;
                     }
                     parent = parent.parentElement;
                 }
 
-                // Finally, check if the element is within the viewport
                 return isElementInViewport(el);
             }
 
@@ -111,40 +111,40 @@ async function highlight_links( page ) {
 
             const position = e.getBoundingClientRect();
 
-            if( position.width > 5 && position.height > 5 && isElementVisible(e) ) {
+            if (position.width > 5 && position.height > 5 && isElementVisible(e)) {
                 const link_text = e.textContent.replace(/[^a-zA-Z0-9 ]/g, '');
-                e.setAttribute( "gpt-link-text", link_text );
+                e.setAttribute("gpt-link-text", link_text);
             }
         }, e);
-    } );
+    });
 }
 
 async function waitForEvent(page, event) {
     return page.evaluate(event => {
         return new Promise((r, _) => {
-            document.addEventListener(event, function(e) {
+            document.addEventListener(event, function (e) {
                 r();
             });
         });
-    }, event)
+    }, event);
 }
 
 (async () => {
-    console.log( "###########################################" );
-    console.log( "# GPT4V-Browsing by Unconventional Coding #" );
-    console.log( "###########################################\n" );
+    console.log("###########################################");
+    console.log("# GPT4V-Browsing by Unconventional Coding #");
+    console.log("###########################################\n");
 
-    const browser = await puppeteer.launch( {
+    const browser = await puppeteer.launch({
         headless: "new",
-    } );
+    });
 
     const page = await browser.newPage();
 
-    await page.setViewport( {
+    await page.setViewport({
         width: 1200,
         height: 1200,
         deviceScaleFactor: 1.75,
-    } );
+    });
 
     const messages = [
         {
@@ -163,44 +163,42 @@ In the beginning, go to a direct URL that you think might contain the answer to 
         }
     ];
 
-    console.log("GPT: How can I assist you today?")
-    const prompt = await input("You: ");
-    console.log();
-
-    messages.push({
-        "role": "user",
-        "content": prompt,
+    console.log("Navigating to initial URL: " + starting_url);
+    await page.goto(starting_url, {
+        waitUntil: "domcontentloaded",
     });
 
-    let url;
+    await highlight_links(page);
+
     let screenshot_taken = false;
+    let url = starting_url;
 
-    while( true ) {
-        if( url ) {
+    while (true) {
+        if (url) {
             console.log("Crawling " + url);
-            await page.goto( url, {
+            await page.goto(url, {
                 waitUntil: "domcontentloaded",
-            } );
+            });
 
-            await highlight_links( page );
+            await highlight_links(page);
 
-            await Promise.race( [
+            await Promise.race([
                 waitForEvent(page, 'load'),
                 sleep(timeout)
-            ] );
+            ]);
 
-            await highlight_links( page );
+            await highlight_links(page);
 
-            await page.screenshot( {
+            await page.screenshot({
                 path: "screenshot.jpg",
                 quality: 10,
-            } );
+            });
 
             screenshot_taken = true;
             url = null;
         }
 
-        if( screenshot_taken ) {
+        if (screenshot_taken) {
             const base64_image = await image_to_base64("screenshot.jpg");
 
             messages.push({
@@ -216,7 +214,7 @@ In the beginning, go to a direct URL that you think might contain the answer to 
                             "url": base64_image,
                             "detail": "low"
                         },
-                    }                    
+                    }
                 ]
             });
 
@@ -226,7 +224,6 @@ In the beginning, go to a direct URL that you think might contain the answer to 
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             max_tokens: 1024,
-            //seed: 665234,
             messages: messages,
         });
 
@@ -238,14 +235,14 @@ In the beginning, go to a direct URL that you think might contain the answer to 
             "content": message_text,
         });
 
-        console.log( "GPT: " + message_text );
+        console.log("GPT: " + message_text);
 
-        if( message_text.indexOf('{"click": "') !== -1 ) {
+        if (message_text.indexOf('{"click": "') !== -1) {
             let parts = message_text.split('{"click": "');
             parts = parts[1].split('"}');
             const link_text = parts[0].replace(/[^a-zA-Z0-9 ]/g, '');
 
-            console.log("Clicking on " + link_text)
+            console.log("Clicking on " + link_text);
 
             try {
                 const elements = await page.$$('[gpt-link-text]');
@@ -253,41 +250,42 @@ In the beginning, go to a direct URL that you think might contain the answer to 
                 let partial;
                 let exact;
 
-                for( const element of elements ) {
-                    const attributeValue = await element.getAttribute('gpt-link-text');
+                for (const element of elements) {
+                    const attributeValue = await element.getProperty('gpt-link-text');
+                    const text = await attributeValue.jsonValue();
 
-                    if( attributeValue.includes( link_text ) ) {
+                    if (text.includes(link_text)) {
                         partial = element;
                     }
 
-                    if( attributeValue === link_text ) {
+                    if (text === link_text) {
                         exact = element;
                     }
                 }
 
-                if( exact ) {
+                if (exact) {
                     await exact.click();
-                } else if( partial ) {
+                } else if (partial) {
                     await partial.click();
                 } else {
-                    throw new Error( "Can't find link" );
+                    throw new Error("Can't find link");
                 }
 
-                await Promise.race( [
+                await Promise.race([
                     waitForEvent(page, 'load'),
                     sleep(timeout)
-                ] );
+                ]);
 
-                await highlight_links( page );
+                await highlight_links(page);
 
-                await page.screenshot( {
+                await page.screenshot({
                     path: "screenshot.jpg",
                     quality: 100,
-                } );
+                });
 
                 screenshot_taken = true;
-            } catch( error ) {
-                console.log( "ERROR: Clicking failed" );
+            } catch (error) {
+                console.log("ERROR: Clicking failed");
 
                 messages.push({
                     "role": "user",
@@ -296,7 +294,7 @@ In the beginning, go to a direct URL that you think might contain the answer to 
             }
 
             continue;
-        } else if( message_text.indexOf('{"url": "') !== -1 ) {
+        } else if (message_text.indexOf('{"url": "') !== -1) {
             let parts = message_text.split('{"url": "');
             parts = parts[1].split('"}');
             url = parts[0];
