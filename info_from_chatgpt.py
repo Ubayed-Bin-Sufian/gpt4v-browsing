@@ -1,4 +1,6 @@
 from openai import OpenAI
+from flask import Flask, request, jsonify
+import json
 
 OPENAI_KEY=""
 client = OpenAI(api_key=OPENAI_KEY)
@@ -18,7 +20,15 @@ def chat_with_gpt(prompt):
     # Return the generated response after stripping whitespace
     return response.choices[0].message.content.strip()
 
+app = Flask(__name__)
+
+@app.route("/")
+def welcome():
+    return "Welcome Ubayed"
+
 if __name__ == "__main__":
+    #app.run(debug=True)
+
     while True:
 
         # Start an infinite loop to chat with the user
