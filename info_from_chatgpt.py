@@ -1,5 +1,7 @@
 from openai import OpenAI
 from flask import Flask, request, jsonify
+from bs4 import BeautifulSoup
+import requests
 
 OPENAI_KEY=""
 client = OpenAI(api_key=OPENAI_KEY)
@@ -16,6 +18,24 @@ def chat_with_gpt(messages):
     # Return the generated response after stripping whitespace
     return response.choices[0].message.content.strip()
 
+# Define a function to extract website content
+def web_crawler(url):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            return f"Failed to retrieve website: Status code {response.status_code}"
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        title = soup.title.string if soup.title else "No title found"
+        text = soup.get_text(separator=' ', strip=True)
+
+        return {
+            "title": title,
+            "text": text
+        }
+    except requests.exceptions.RequestException as e:
+        return f"An error occurred: {e}"
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -26,32 +46,44 @@ def welcome():
 def answer():
     data = request.get_json()
     
-    # Check if 'messages' is provided in the request
-    if 'messages' not in data:
-        return jsonify({'error': 'Messages are required'}), 400
+    # Check if 'url' is provided in the request
+    if 'url' not in data:
+        return jsonify({'error': 'URL is required'}), 400
 
     # Get the messages from the request
-    messages = data['messages']
+    url = data['url']
+
+    # Fetch website content using web_crawler
+    website_details = web_crawler(url)
+
+    if isinstance(website_details, str):
+        return jsonify({'error': website_details}), 400
+    
+    # Prepare GPT message based on website content
+    messages = [
+        {
+            "role": "system", 
+            "content": "You are an AI assistant specializing in summarizing complex and detailed website content concisely. Focus on capturing key news highlights related to artificial intelligence, summarizing the main points without unnecessary details."
+        },
+        {
+            "role": "user", 
+            "content": f"""Summarize the following content from MIT's AI news:
+            Title: {website_details['title']}
+            Text: {website_details['text']}
+            Focus on the most important updates in AI research, including new projects, technological advancements, and research initiatives mentioned on the website."""
+        }
+    ]
 
     # Call OpenAI API and get the response
     response_text = chat_with_gpt(messages)
 
-    # Return the AI's response as plain text
-    return jsonify({'response': response_text})
+    # Return the GPT-generated summary
+    return jsonify({'News Summary: ': response_text})
 
 if __name__ == "__main__":
     app.run(debug=True)
 
-# #curl request (copy the following and paste it in the git bash)
+
 # curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{
-#   "messages": [
-#     {
-#       "role": "system",
-#       "content": "You are an AI assistant specializing in delivering the top three news stories in the field of artificial intelligence. Each story should be summarized in no more than 200 words, focusing on the most recent and impactful developments in AI research, industry trends, and breakthroughs. Prioritize concise, clear, and relevant news that keeps the user informed about the latest advancements."},
-#     },
-#     {
-#       "role": "user",
-#       "content": "Can you tell me the latest updates in AI research?"
-#     }
-#   ]
+#   "url": "https://news.mit.edu/topic/artificial-intelligence2"
 # }'
