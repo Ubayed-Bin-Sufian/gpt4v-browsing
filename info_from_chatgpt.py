@@ -87,3 +87,5 @@ if __name__ == "__main__":
 
 
 # curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{ "url": "https://news.mit.edu/topic/artificial-intelligence2" }'
+# curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{ "url": "https://techcrunch.com/category/artificial-intelligence/" }'
+# curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{ "url": "https://www.artificialintelligence-news.com/" }'
