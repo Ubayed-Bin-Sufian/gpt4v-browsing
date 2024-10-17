@@ -9,7 +9,7 @@ const App = () => {
   const newsUrls = [
     'https://news.mit.edu/topic/artificial-intelligence2', // MIT AI News
     'https://techcrunch.com/category/artificial-intelligence/', // TechCrunch AI News
-    'https://www.artificialintelligence-news.com/' // WSJ AI News
+    'https://www.artificialintelligence-news.com/' // AI News
   ];
 
   // Function to fetch the summaries when the component loads
