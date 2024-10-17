@@ -1,5 +1,6 @@
 from openai import OpenAI
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS
 from bs4 import BeautifulSoup
 import requests
 
@@ -37,6 +38,7 @@ def web_crawler(url):
         return f"An error occurred: {e}"
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 @app.route("/")
 def welcome():
@@ -84,6 +86,4 @@ if __name__ == "__main__":
     app.run(debug=True)
 
 
-# curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{
-#   "url": "https://news.mit.edu/topic/artificial-intelligence2"
-# }'
+# curl -X POST http://localhost:5000/AI_news -H "Content-Type: application/json" -d '{ "url": "https://news.mit.edu/topic/artificial-intelligence2" }'
